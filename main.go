@@ -14,8 +14,8 @@ import (
 const USAGE = `noscl
 
 Usage:
-  noscl home [--verbose] [--json] [--onlyreplies] [--noreplies] [--onlymentions] [--kinds=<kinds>...] [--since=<since>] [--until=<until>] [--limit=<limit>]
-  noscl inbox [--verbose] [--json] [--onlyreplies] [--noreplies] [--since=<since>] [--until=<until>] [--limit=<limit>]
+  noscl home [--verbose] [--json] [--onlyreplies] [--noreplies] [--onlymentions] [--kinds=<kinds>...] [--since=<since>] [--until=<until>] [--limit=<limit>] [--reference=<id>...]
+  noscl inbox [--verbose] [--json] [--onlyreplies] [--noreplies] [--since=<since>] [--until=<until>] [--limit=<limit>] [--reference=<id>...]
   noscl setprivate <key>
   noscl sign <event-json>
   noscl verify <event-json>

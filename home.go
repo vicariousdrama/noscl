@@ -32,14 +32,9 @@ func home(opts docopt.Opts, inboxMode bool) {
     since, _ := opts.Int("--since")
     until, _ := opts.Int("--until")
     limit, _ := opts.Int("--limit")
+    references, _ := optSlice(opts, "--reference")
 
-    if len(config.Following) == 0 && !inboxMode {
-        if !onlymentions {
-            log.Println("You need to be following someone to run 'home'")
-            return
-        }
-    }
-
+    // Mapping for alias to pubkeys used for output
     var keys []string
     nameMap := map[string]string{}
     for _, follow := range config.Following {
@@ -48,22 +43,37 @@ func home(opts docopt.Opts, inboxMode bool) {
             nameMap[follow.Key] = follow.Name
         }
     }
+
+    // Get our pubkey
     pubkey := getPubKey(config.PrivateKey)
 
     // Prepare filter to subscribe to based on options
-    filters := nostr.Filters{{Limit: limit}}
+    tags := make(map[string][]string)
+    filters := nostr.Filters{{Limit: limit, Tags: nostr.TagMap{}}}
+    // - override kinds for inbox to encrypted messages
     if inboxMode {
-        // Force kinds to encrypted messages
         intkinds = make([]int, 0)
         intkinds = append(intkinds, nostr.KindEncryptedDirectMessage)
     }
+    filters[0].Kinds = intkinds
+    // - Set publickey tag restrictions depending on mode or flags
     if inboxMode || onlymentions {
         // Filter by p tag to me
-        filters[0].Tags = nostr.TagMap{"p": {pubkey}}
-    } else {
+        tags["p"] = []string{pubkey}
+    }
+    // - Set event tag restrictions if reference set
+    if len(references) > 0 {
+        tags["e"] = []string{}
+        for _, ref := range references {
+            tags["e"] = append(tags["e"], ref)
+        }
+    }
+    // - If no tags, filter by followers
+    if len(tags) == 0 {
         // Filter to just those I follow
         filters[0].Authors = keys
     }
+    // - Date range
     if since > 0 {
         sinceTime := time.Unix(int64(since), 0)
         filters[0].Since = &sinceTime
@@ -72,7 +82,11 @@ func home(opts docopt.Opts, inboxMode bool) {
         untilTime := time.Unix(int64(until), 0)
         filters[0].Until = &untilTime
     }
-    filters[0].Kinds = intkinds
+    // - Assign assembled tags to filter
+    filters[0].Tags = tags
+
+
+    // Get from the relays
 	_, all := pool.Sub(filters)
 	for event := range nostr.Unique(all) {
 		// Do we have a nick for the author of this message?
@@ -96,6 +110,7 @@ func home(opts docopt.Opts, inboxMode bool) {
 			}
 		}
 
+        // Post-filters (currently no way to filter up front for this)
         // if only want events referencing another
         if (onlyreplies || noreplies) {
             var hasReferences bool = false
@@ -112,6 +127,7 @@ func home(opts docopt.Opts, inboxMode bool) {
             }
         }
 
+        // Render
 		printEvent(event, &nick, verbose, jsonformat)
 	}
 }

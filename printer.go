@@ -44,6 +44,19 @@ func printEvent(evt nostr.Event, nick *string, verbose bool, jsonformat bool) {
 
     // json
     if jsonformat {
+        if evt.Kind == nostr.KindEncryptedDirectMessage {
+    		sharedSecret, err := nip04.ComputeSharedSecret(config.PrivateKey, evt.PubKey)
+	    	if err != nil {
+		    	log.Printf("Error computing shared key: %s. \n", err.Error())
+			    return
+    		}
+	    	txt, err := nip04.Decrypt(evt.Content, sharedSecret)
+		    if err != nil {
+    			log.Printf("Error decrypting message: %s. \n", err.Error())
+	    		return
+		    }
+            evt.Content = txt
+        }
         jevt, _ := json.MarshalIndent(evt, "", "\t")
         fmt.Print(string(jevt))
         return
